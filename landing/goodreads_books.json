@@ -1,16 +1,112 @@
 {
-    "scraper_metadata": {
-        "source_url": "https://www.goodreads.com/search?q=data science&search_type=books",
-        "search_query": "data science",
-        "selectors_used": {
-            "results_container": "table.table_subject_books",
-            "title_link": "a.bookTitle",
-            "author_link": "a.authorName",
-            "rating_span": "span.minirating"
-        },
-        "user_agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36",
-        "scrape_date": "2025-11-15T19:53:50.251523",
-        "num_records_scraped": 0
+  "scraper_metadata": {
+    "source_url": "https://www.goodreads.com/search?q=data science&search_type=books",
+    "search_query": "data science",
+    "user_agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36",
+    "scrape_date": "2025-11-15T21:02:22.379372",
+    "num_records_scraped": 10,
+    "extraction_strategy": "Search List -> Visit Individual Book Page"
+  },
+  "books": [
+    {
+      "book_id_source": "17682206",
+      "book_url": "https://www.goodreads.com/book/show/17682206",
+      "title": "Data Smart: Using Data Science to Transform Information into Insight",
+      "author": null,
+      "rating": null,
+      "ratings_count": null,
+      "isbn10": null,
+      "isbn13": null
     },
-    "books": []
+    {
+      "book_id_source": "25407018",
+      "book_url": "https://www.goodreads.com/book/show/25407018",
+      "title": "Data Science from Scratch: First Principles with Python",
+      "author": null,
+      "rating": null,
+      "ratings_count": null,
+      "isbn10": null,
+      "isbn13": null
+    },
+    {
+      "book_id_source": "205905685",
+      "book_url": "https://www.goodreads.com/book/show/205905685",
+      "title": "Mindmasters: The Data-Driven Science of Predicting and Changing Human Behavior",
+      "author": null,
+      "rating": null,
+      "ratings_count": null,
+      "isbn10": null,
+      "isbn13": null
+    },
+    {
+      "book_id_source": "33399049",
+      "book_url": "https://www.goodreads.com/book/show/33399049",
+      "title": "R for Data Science: Import, Tidy, Transform, Visualize, and Model Data",
+      "author": null,
+      "rating": null,
+      "ratings_count": null,
+      "isbn10": null,
+      "isbn13": null
+    },
+    {
+      "book_id_source": "17346997",
+      "book_url": "https://www.goodreads.com/book/show/17346997",
+      "title": "Doing Data Science: Straight Talk from the Frontline",
+      "author": null,
+      "rating": null,
+      "ratings_count": null,
+      "isbn10": null,
+      "isbn13": null
+    },
+    {
+      "book_id_source": "26457146",
+      "book_url": "https://www.goodreads.com/book/show/26457146",
+      "title": "Python Data Science Handbook: Essential Tools for Working with Data",
+      "author": null,
+      "rating": null,
+      "ratings_count": null,
+      "isbn10": null,
+      "isbn13": null
+    },
+    {
+      "book_id_source": "34213247",
+      "book_url": "https://www.goodreads.com/book/show/34213247",
+      "title": "Numsense! Data Science for the Layman: No Math Added",
+      "author": null,
+      "rating": null,
+      "ratings_count": null,
+      "isbn10": null,
+      "isbn13": null
+    },
+    {
+      "book_id_source": "36722689",
+      "book_url": "https://www.goodreads.com/book/show/36722689",
+      "title": "Data Science",
+      "author": null,
+      "rating": null,
+      "ratings_count": null,
+      "isbn10": null,
+      "isbn13": null
+    },
+    {
+      "book_id_source": "56357967",
+      "book_url": "https://www.goodreads.com/book/show/56357967",
+      "title": "Becoming a Data Head: How to Think, Speak, and Understand Data Science, Statistics, and Machine Learning",
+      "author": null,
+      "rating": null,
+      "ratings_count": null,
+      "isbn10": null,
+      "isbn13": null
+    },
+    {
+      "book_id_source": "58949285",
+      "book_url": "https://www.goodreads.com/book/show/58949285",
+      "title": "Ace the Data Science Interview: 201 Real Interview Questions Asked By FAANG, Tech Startups, & Wall Street",
+      "author": null,
+      "rating": null,
+      "ratings_count": null,
+      "isbn10": null,
+      "isbn13": null
+    }
+  ]
 }

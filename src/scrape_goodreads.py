@@ -4,149 +4,222 @@ import json
 import os
 from datetime import datetime
 import time 
-import re # Necesario para expresiones regulares en la extracción de rating/count
+import re 
+from typing import List, Dict, Optional
 
 # --- Configuración de Rutas y Parámetros ---
-# Usamos os.path.dirname(os.path.dirname(__file__)) para obtener la raíz del proyecto (books-pipeline/)
 PROJECT_ROOT = os.path.dirname(os.path.dirname(__file__))
-# URL base sin parámetros, que se añaden dinámicamente en la función
+LANDING_DIR = os.path.join(PROJECT_ROOT, "landing")
+OUTPUT_FILE = os.path.join(LANDING_DIR, 'goodreads_books.json')
+
 GOODREADS_SEARCH_URL = "https://www.goodreads.com/search" 
-SEARCH_QUERY = "data science" # Consulta de búsqueda requerida
-OUTPUT_FILE = os.path.join(PROJECT_ROOT, 'landing', 'goodreads_books.json')
+BASE_BOOK_URL = "https://www.goodreads.com/book/show/{}"
+SEARCH_QUERY = "data science" 
+MIN_BOOKS_TO_SCRAPE = 10 
+PAGINATION_DELAY_SECONDS = 1.0 # Pausa entre páginas de búsqueda
+BOOK_DELAY_SECONDS = 1.5       # Pausa entre la descarga de fichas individuales
+
 HEADERS = {
-    # Simular un navegador para evitar ser bloqueado
     'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36'
 }
-MIN_BOOKS_TO_SCRAPE = 10 # Mínimo de 10 libros requerido
-PAGINATION_DELAY_SECONDS = 1.5 
 
-def get_goodreads_books(query: str, min_books: int = 10) -> list:
-    """
-    Scrapea Goodreads para obtener la información de los libros de la página de búsqueda.
-    Extrae title, author, rating, ratings_count y book_url.
-    """
-    all_books = []
-    page_num = 1
-    
-    print(f"Iniciando scraping de Goodreads para la consulta: '{query}'")
+# ---------------------------------------------------------------------
+# Funciones de Extracción
+# ---------------------------------------------------------------------
 
-    while len(all_books) < min_books:
+def fetch_html(url: str) -> Optional[str]:
+    """Descarga el HTML de una URL."""
+    try:
+        response = requests.get(url, headers=HEADERS, timeout=15)
+        response.raise_for_status()
+        return response.text
+    except requests.RequestException as e:
+        print(f"[ERROR] No se pudo descargar la página {url}: {e}")
+        return None
+
+def extract_book_id_from_href(href: str) -> Optional[str]:
+    """Extrae el ID del libro de una URL de Goodreads."""
+    if not href:
+        return None
+    # Busca el patrón /book/show/ID o /book/show/ID.Nombre_Libro
+    m = re.search(r"/book/show/(\d+)", href)
+    if m:
+        return m.group(1)
+    return None
+
+def search_book_ids(query: str, max_books: int, max_pages: int = 5) -> List[str]:
+    """Busca en Goodreads y devuelve una lista de IDs de libro."""
+    book_ids: List[str] = []
+
+    for page in range(1, max_pages + 1):
+        if len(book_ids) >= max_books:
+            break
+            
         params = {
             'q': query,
             'search_type': 'books',
-            'page': page_num
+            'page': page
         }
         
-        print(f"Scraping página {page_num}...")
-        try:
-            response = requests.get(GOODREADS_SEARCH_URL, headers=HEADERS, params=params)
-            response.raise_for_status() 
-        except requests.exceptions.RequestException as e:
-            print(f"Error al conectar con Goodreads en la página {page_num}: {e}")
+        url = f"{GOODREADS_SEARCH_URL}?q={query}&search_type=books&page={page}"
+        print(f"[INFO] Buscando IDs en página {page}...")
+        
+        html = fetch_html(url)
+        if html is None:
+            print("[WARN] No se pudo obtener esta página de búsqueda.")
             break
 
-        soup = BeautifulSoup(response.text, 'html.parser')
+        soup = BeautifulSoup(html, "html.parser")
         
-        # Selector de la tabla de resultados (el más estable para esta vista)
-        results_table = soup.find('table', class_='table_subject_books')
+        # Selector más robusto para las filas de la tabla de resultados
+        rows = soup.select("table.tableList tr") 
         
-        if not results_table:
-            # Si no encuentra la tabla, termina el scraping.
-            if page_num == 1:
-                print("No se encontraron resultados o la estructura HTML ha cambiado. Terminando.")
+        if not rows or len(rows) <= 1:
+            print("[INFO] No hay más resultados o la estructura HTML ha cambiado.")
             break
 
-        # Las filas de la tabla contienen los datos de los libros
-        rows = results_table.find_all('tr')
-        
-        # Iteramos sobre las filas, saltando el encabezado (índice 0)
-        for row in rows[1:]: 
-            book_data = {
-                'isbn10': None, # Inicializar campos opcionales según el requisito
-                'isbn13': None
-            }
+        for row in rows[1:]: # Ignoramos el encabezado si existe
+            link = row.select_one("a.bookTitle")
+            if not link:
+                continue
             
-            # 1. Título y URL del libro
-            title_link = row.find('a', class_='bookTitle')
-            if title_link:
-                book_data['title'] = title_link.text.strip()
-                book_data['book_url'] = "https://www.goodreads.com" + title_link['href']
-            else:
-                continue # Saltar si no hay título
-
-            # 2. Autor
-            author_link = row.find('a', class_='authorName')
-            book_data['author'] = author_link.text.strip() if author_link else None
+            href = link.get("href", "")
+            book_id = extract_book_id_from_href(href)
             
-            # 3. Rating y ratings_count
-            rating_span = row.find('span', class_='minirating')
-            if rating_span:
-                # El texto suele ser: "X.XX avg rating — NNN ratings"
-                text = rating_span.text.strip()
+            if book_id and book_id not in book_ids:
+                book_ids.append(book_id)
                 
-                # Extraer rating (ej. X.XX)
-                rating_match = re.search(r'([\d.]+)\s+avg rating', text)
-                if rating_match:
-                    try:
-                        book_data['rating'] = float(rating_match.group(1))
-                    except ValueError:
-                        book_data['rating'] = None
+            if len(book_ids) >= max_books:
+                break
+                
+        time.sleep(PAGINATION_DELAY_SECONDS)
 
-                # Extraer ratings_count (ej. NNN, incluyendo comas)
-                count_match = re.search(r'—\s+([\d,]+)\s+ratings', text)
-                if count_match:
-                    try:
-                        # Eliminar comas y convertir a entero
-                        book_data['ratings_count'] = int(count_match.group(1).replace(',', ''))
-                    except ValueError:
-                        book_data['ratings_count'] = None
+    print(f"[INFO] Total de IDs encontrados: {len(book_ids)}")
+    return book_ids
 
-            all_books.append(book_data)
-            
-            if len(all_books) >= min_books:
-                break 
+def parse_book_page(html: str, book_id: str) -> Dict:
+    """Extrae la información requerida de la página de detalles de un libro."""
+    soup = BeautifulSoup(html, "html.parser")
+    book_data = {
+        "book_id_source": book_id,
+        "book_url": BASE_BOOK_URL.format(book_id),
+        "title": None,
+        "author": None,
+        "rating": None,
+        "ratings_count": None,
+        "isbn10": None,
+        "isbn13": None,
+    }
 
-        page_num += 1
+    # 1. Título
+    title_tag = soup.select_one("h1[data-testid='bookTitle']")
+    book_data['title'] = title_tag.get_text(strip=True) if title_tag else None
+
+    # 2. Autor (tomamos solo el primero si hay varios)
+    author_tag = soup.select_one("span[data-testid='authorName'] a")
+    book_data['author'] = author_tag.get_text(strip=True) if author_tag else None
+
+    # 3. Valoración media (rating) y Conteo
+    rating_value_tag = soup.select_one("div[data-testid='rating'] span[data-testid='ratingValue']")
+    if rating_value_tag:
+        try:
+            # Goodreads usa la coma como separador de miles en ratingsCount, 
+            # pero el rating es un punto (ej. 4.23)
+            rating_text = rating_value_tag.get_text(strip=True)
+            book_data['rating'] = float(rating_text)
+        except (ValueError, TypeError):
+            pass
+
+    ratings_count_tag = soup.select_one("div[data-testid='rating'] span[data-testid='ratingsCount']")
+    if ratings_count_tag:
+        text = ratings_count_tag.get_text(strip=True).replace(",", "")
+        parts = re.search(r'(\d+)', text)
+        if parts:
+             try:
+                book_data['ratings_count'] = int(parts.group(1))
+             except ValueError:
+                pass
+
+
+    # 4. ISBNs (Suele estar en la sección de 'Details' o en texto plano)
+    text_content = soup.get_text(" ", strip=True)
+
+    # ISBN-13
+    match_13 = re.search(r"ISBN13:?[\s(]+(\d{13})", text_content)
+    book_data['isbn13'] = match_13.group(1) if match_13 else None
+
+    # ISBN-10
+    match_10 = re.search(r"ISBN:?[\s(]+(\d{10})", text_content)
+    book_data['isbn10'] = match_10.group(1) if match_10 else None
+
+    return book_data
+
+def scrape_goodreads_books(book_ids: List[str]) -> List[Dict]:
+    """Descarga la información completa de cada libro por ID."""
+    results: List[Dict] = []
+
+    for idx, book_id in enumerate(book_ids, start=1):
+        print(f"[INFO] ({idx}/{len(book_ids)}) Extrayendo ficha ID={book_id}...")
+
+        url = BASE_BOOK_URL.format(book_id)
+        html = fetch_html(url)
         
-        if len(all_books) < min_books: 
-            time.sleep(PAGINATION_DELAY_SECONDS)
+        if html is None:
+            print(f"[WARN] Saltando libro {book_id} por error de descarga.")
+            continue
 
-    print(f"Scraping completado. Total de libros recolectados: {len(all_books)}")
-    return all_books[:min_books] 
+        book_data = parse_book_page(html, book_id)
+        results.append(book_data)
+
+        time.sleep(BOOK_DELAY_SECONDS) # Pausa entre libros
+
+    return results
+
+# ---------------------------------------------------------------------
+# Punto de entrada principal
+# ---------------------------------------------------------------------
 
 def main():
+    print("-" * 40)
+    print(f"[{datetime.now().strftime('%Y-%m-%d %H:%M:%S')}] Inicio del Ejercicio 1: Scraping Goodreads")
+    print("-" * 40)
+
+    # 1. Buscar IDs de libros
+    book_ids = search_book_ids(SEARCH_QUERY, MIN_BOOKS_TO_SCRAPE)
+    if not book_ids:
+        print("[ERROR] No se ha encontrado ningún ID de libro en la búsqueda. Terminando.")
+        return
+
+    # 2. Scrapear cada ficha individualmente
+    books_data = scrape_goodreads_books(book_ids)
     
-    # 1. Asegúrate de que el directorio 'landing' exista
-    output_dir = os.path.dirname(OUTPUT_FILE)
-    if not os.path.exists(output_dir):
-        os.makedirs(output_dir)
+    if not books_data:
+        print("[ERROR] No se ha podido obtener ningún libro válido. Terminando.")
+        return
 
-    books_data = get_goodreads_books(SEARCH_QUERY, MIN_BOOKS_TO_SCRAPE)
-
-    # 2. Preparar el JSON de salida con metadatos de documentación
+    # 3. Preparar y guardar el JSON de salida con metadatos
+    if not os.path.exists(LANDING_DIR):
+        os.makedirs(LANDING_DIR)
+        
     metadata = {
         "scraper_metadata": {
             "source_url": f"{GOODREADS_SEARCH_URL}?q={SEARCH_QUERY}&search_type=books",
             "search_query": SEARCH_QUERY,
-            "selectors_used": {
-                "results_container": "table.table_subject_books",
-                "title_link": "a.bookTitle",
-                "author_link": "a.authorName",
-                "rating_span": "span.minirating"
-            },
             "user_agent": HEADERS['User-Agent'],
             "scrape_date": datetime.now().isoformat(),
-            "num_records_scraped": len(books_data)
+            "num_records_scraped": len(books_data),
+            "extraction_strategy": "Search List -> Visit Individual Book Page"
         },
         "books": books_data
     }
 
-    # 3. Guardar el archivo JSON
     with open(OUTPUT_FILE, 'w', encoding='utf-8') as f:
-        json.dump(metadata, f, ensure_ascii=False, indent=4)
+        json.dump(metadata, f, ensure_ascii=False, indent=2)
 
-    print(f"\n✅ Datos de Goodreads guardados en: {OUTPUT_FILE}")
+    print(f"\n Proceso completado correctamente.")
+    print(f"Datos de Goodreads guardados en: {OUTPUT_FILE}")
     print(f"Total de registros de libros: {len(books_data)}")
+
 
 if __name__ == "__main__":
     main()
