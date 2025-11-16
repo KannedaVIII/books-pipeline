@@ -1,14 +1,151 @@
-import pandas as pd
-import json
-import os
+# --- utilities (utils_isbn) ---
 import re
+from typing import Optional
+
+def clean_isbn(isbn_raw: Optional[str]) -> Optional[str]:
+    """
+    Limpia una cadena ISBN (10 o 13) eliminando caracteres no numéricos
+    y devolviendo el valor limpio si es de longitud 10 o 13.
+    """
+    if not isbn_raw:
+        return None
+    
+    s = str(isbn_raw).strip()
+
+    if s.lower() in {"none", "null", "nan", "missing"}:
+        return None
+    
+    digits = re.sub(r'[^0-9]', '', s)
+
+    if len(digits) == 13 or len(digits) == 10:
+        return digits
+    
+    return None
+
+def is_isbn13(value: Optional[str]) -> bool:
+    """Comprueba si una cadena limpia es un ISBN-13 válido (13 dígitos)."""
+    return bool(value) and len(value) == 13 and value.isdigit()
+
+# --- utilities (utils_goods) ---
+from typing import Optional, Dict, Any, List
 from datetime import datetime
-from typing import List, Dict, Any, Optional
+import re
+import pandas as pd
+
+VALID_LANGUAGES = ["en", "es", "fr", "pt-br", "de", "it"] 
+VALID_CURRENCIES = ["USD", "EUR", "GBP", "CAD", "JPY", "AUD"] 
+
+def normalize_date(date_raw: Optional[str]) -> Optional[str]:
+    """
+    Normaliza una fecha desde varios formatos a ISO-8601 (YYYY-MM-DD o YYYY).
+    """
+    if not date_raw:
+        return None
+        
+    date_str = str(date_raw).strip()
+    
+    try:
+        date_obj = pd.to_datetime(date_str, errors='coerce')
+        
+        if pd.isna(date_obj) or date_obj == pd.NaT:
+            if re.match(r'^\d{4}$', date_str):
+                return date_str
+            return None 
+
+        if not pd.isna(date_obj.day):
+            return date_obj.strftime('%Y-%m-%d')
+        elif not pd.isna(date_obj.month):
+            return date_obj.strftime('%Y-%m')
+        else:
+            return date_obj.strftime('%Y')
+            
+    except Exception:
+        return None
+
+def normalize_language(lang_raw: Optional[str]) -> Optional[str]:
+    """
+    Normaliza el código de idioma a BCP-47.
+    """
+    if not lang_raw:
+        return None
+        
+    lang = lang_raw.strip().lower()
+    
+    if lang in VALID_LANGUAGES:
+        return lang
+    
+    if lang == 'eng':
+        return 'en'
+    if lang == 'spa':
+        return 'es'
+    
+    return None
+
+def check_currency(currency_code: Optional[Any]) -> bool:
+    """
+    Verifica si el código de moneda es un ISO-4217 conocido.
+    """
+    if currency_code is None or pd.isna(currency_code):
+        return False
+    
+    try:
+        code_str = str(currency_code).strip()
+        if code_str.lower() in {"nan", "none", ""}:
+             return False
+             
+        return code_str.upper() in VALID_CURRENCIES
+    except Exception:
+        return False
+
+
+def calculate_quality_metrics(df: pd.DataFrame, source_name: str, key_columns: List[str]) -> Dict[str, Any]:
+    """
+    Calcula métricas de calidad básicas para un DataFrame de origen.
+    CORRECCIÓN: Se fuerzan los tipos de NumPy (int64) a tipos nativos de Python (int, float)
+    para ser serializables a JSON.
+    """
+    total_rows = len(df)
+    
+    metrics: Dict[str, Any] = {
+        'source': source_name,
+        'timestamp': datetime.now().isoformat(),
+        'total_rows': int(total_rows), # CORREGIDO: Convertir a int nativo
+        'null_counts': {},
+        'completeness_pct': {}
+    }
+    
+    # 1. Completitud: Valores nulos en columnas clave
+    for col in key_columns:
+        null_count = df[col].isna().sum()
+        metrics['null_counts'][col] = int(null_count) # CORREGIDO: Convertir a int nativo
+        
+        valid_count = df[col].notna().sum()
+        completeness = round((valid_count / total_rows) * 100, 2)
+        metrics['completeness_pct'][col] = float(completeness) # Guardar como float nativo si es necesario
+        
+    # 2. Formato: Idiomas válidos
+    valid_langs_pct = round(
+        (df['idioma_bcp47'].notna().sum() / total_rows) * 100, 2
+    ) if total_rows else 0
+    metrics['pct_valid_languages_bcp47'] = float(valid_langs_pct)
+    
+    # 3. Formato: Monedas válidas
+    if 'moneda_iso' in df.columns:
+        valid_currencies_pct = round(
+            (df['moneda_iso'].notna().sum() / total_rows) * 100, 2
+        ) if total_rows else 0
+        metrics['pct_valid_currencies_iso4217'] = float(valid_currencies_pct)
+
+    return metrics
+
+
+# --- main integrate_pipeline ---
+import json
 from pathlib import Path
 
-# Importar funciones de utilidades (ya corregido para usar utils_goods)
-from utils_isbn import clean_isbn, is_isbn13
-from utils_goods import normalize_date, normalize_language, check_currency, calculate_quality_metrics 
+# Las funciones clean_isbn, is_isbn13 (de utils_isbn) y 
+# normalize_date, normalize_language, check_currency, calculate_quality_metrics (de utils_goods)
+# se asumen disponibles o ya incluidas arriba.
 
 # ---------------------------------------------------------------------
 # Configuración y Rutas
@@ -79,13 +216,9 @@ def map_and_normalize(df: pd.DataFrame, source: str) -> pd.DataFrame:
     # Naming and Source Column Definitions
     # ----------------------------------------
     if source == 'goodreads':
-        # Rename original fields to raw/standard
         df_std.rename(columns={'title': 'title_raw', 'author': 'authors_raw', 'book_url': 'url_source'}, inplace=True)
-        # Normalize title for merging/hashing
         df_std['title_normalized'] = df_std['title_raw'].astype(str).str.strip().str.lower()
         df_std['authors_raw'] = df_std['authors_raw'].astype(str).fillna('').str.strip()
-        
-        # Add placeholder columns if missing from simple scrape
         df_std['language_raw'] = None
         df_std['publishedDate_raw'] = None 
         df_std['price_amount'] = None
@@ -95,76 +228,51 @@ def map_and_normalize(df: pd.DataFrame, source: str) -> pd.DataFrame:
         df_std['pageCount'] = None
 
     elif source == 'googlebooks':
-        # Rename enriched fields from GoogleBooks
         df_std.rename(columns={
-            'title': 'title_raw_gb', # Enriched title (used for description)
+            'title': 'title_raw_gb', 
             'authors': 'authors_raw', 
             'pub_date': 'publishedDate_raw', 
             'language': 'language_raw', 
             'categories': 'categories_raw',
-            'goodreads_title': 'title_raw', # Original title from GoodReads (used for normalization)
+            'goodreads_title': 'title_raw', 
             'goodreads_url': 'url_source',
             'publisher': 'publisher',
             'price_amount': 'price_amount',
             'price_currency': 'price_currency'
         }, inplace=True)
         
-        # Use the original GoodReads title for normalization/hashing
         df_std['title_normalized'] = df_std['title_raw'].astype(str).str.strip().str.lower()
         df_std['authors_raw'] = df_std['authors_raw'].astype(str).fillna('').str.strip()
-        df_std['pageCount'] = None # Placeholder if pages were not scraped in Ej. 2
+        df_std['pageCount'] = None
 
     df_std['source_name'] = source
     df_std['timestamp_ingesta'] = datetime.now().isoformat()
     
-    # ----------------------------------------
-    # Normalization of ISBNs (Applies to both sources)
-    # ----------------------------------------
+    # Normalization
     df_std['isbn13_clean'] = df_std.apply(
         lambda row: clean_isbn(row.get('isbn13')) or clean_isbn(row.get('goodreads_isbn13')), axis=1
     )
     df_std['isbn10_clean'] = df_std.apply(
         lambda row: clean_isbn(row.get('isbn10')) or clean_isbn(row.get('goodreads_isbn10')), axis=1
     )
-    
-    # ----------------------------------------
-    # Normalization of Dates (YYYY-MM-DD or YYYY)
-    # ----------------------------------------
     df_std['fecha_publicacion'] = df_std['publishedDate_raw'].apply(normalize_date)
-    
-    # ----------------------------------------
-    # Normalization of Language (BCP-47)
-    # ----------------------------------------
     df_std['idioma_bcp47'] = df_std['language_raw'].apply(normalize_language)
-    
-    # ----------------------------------------
-    # Normalization of Currency (ISO-4217) and Price
-    # ----------------------------------------
     df_std['moneda_iso'] = df_std['price_currency'].apply(
         lambda x: x if check_currency(x) else pd.NA
     )
     df_std['precio'] = df_std['price_amount']
 
-    # ----------------------------------------
-    # Definition of Canonical ID (isbn13 preferred)
-    # ----------------------------------------
-    
-    # 1. Primary Canonical ID: Clean ISBN-13
+    # Canonical ID (ISBN-13 limpio o Hash)
     df_std['book_id'] = df_std['isbn13_clean'].apply(lambda x: x if is_isbn13(x) else pd.NA)
-    
-    # 2. Secondary Canonical ID: Generate hash if ISBN-13 is missing
-    # We create a fallback key based on cleaned title and first author
     df_std['fallback_key'] = (
         df_std['title_normalized'].fillna('__MISSING_TITLE__') + 
         '|' + 
         df_std['authors_raw'].str.split(',').str[0].fillna('__MISSING_AUTHOR__')
     )
     df_std['book_id'] = df_std.apply(
-        lambda row: row['book_id'] if pd.notna(row['book_id']) else hash(row['fallback_key']),
+        lambda row: row['book_id'] if pd.notna(row['book_id']) else str(hash(row['fallback_key'])),
         axis=1
     )
-    
-    # 3. Year of Publication (derived)
     df_std['anio_publicacion'] = df_std['fecha_publicacion'].astype(str).str[:4]
     
     return df_std
@@ -175,17 +283,12 @@ def standardize_and_merge(raw_data: Dict[str, pd.DataFrame]) -> tuple[pd.DataFra
     """
     print("[INFO] 2. Estandarizando y Normalizando las fuentes.")
     
-    # 1. Separate Mapping and Normalization
     df_gr_std = map_and_normalize(raw_data['goodreads'], 'goodreads')
     df_gb_std = map_and_normalize(raw_data['googlebooks'], 'googlebooks')
     
-    # 2. Unification (Concatenate both DataFrames)
     df_unified = pd.concat([df_gr_std, df_gb_std], ignore_index=True)
 
-    # 3. Quality Checks
     quality_metrics = {}
-    
-    # Key columns for completeness checks
     key_cols = ['book_id', 'title_normalized', 'isbn13_clean', 'authors_raw']
     quality_metrics['goodreads'] = calculate_quality_metrics(df_gr_std, 'goodreads', key_cols)
     quality_metrics['googlebooks'] = calculate_quality_metrics(df_gb_std, 'googlebooks', key_cols)
@@ -198,47 +301,32 @@ def deduplicate_and_create_dims(df_unified: pd.DataFrame) -> Dict[str, pd.DataFr
     """
     print("[INFO] 3. Deduplicando y aplicando reglas de supervivencia.")
     
-    # ----------------------------------------
-    # Survival Rules (Priority)
-    # ----------------------------------------
-    
-    # Rule: 1. Source (GoogleBooks > GoodReads), 2. Title (longest length), 3. Date (most recent)
+    # Survival Rules
     df_unified['source_rank'] = df_unified['source_name'].apply(lambda x: 1 if x == 'googlebooks' else 2)
     df_unified['title_length'] = df_unified['title_raw'].astype(str).str.len().fillna(0)
-    
-    # Sort by duplication key (book_id) and then by survival criteria
-    # We use a placeholder for date sorting to handle missing values gracefully
     df_unified['fecha_sort'] = df_unified['fecha_publicacion'].fillna('0000-00-00')
     
     df_sorted = df_unified.sort_values(
         by=['book_id', 'source_rank', 'title_length', 'fecha_sort'], 
-        ascending=[True, True, False, False] # book_id asc, source_rank asc (GB=1), length desc, date desc
+        ascending=[True, True, False, False]
     )
     
-    # Identify the winner record (first in each group)
     df_winners = df_sorted.drop_duplicates(subset=['book_id'], keep='first')
     df_winners['fuente_ganadora'] = df_winners['source_name']
     df_winners['ts_ultima_actualizacion'] = datetime.now().isoformat()
     
-    # ----------------------------------------
-    # Emission of Parquet Artifacts
-    # ----------------------------------------
-    
     # a) book_source_detail.parquet
     print("[INFO] Generando book_source_detail.parquet...")
     df_source_detail = df_unified.copy()
-    # Add a flag indicating if the record is the winner for that key
     winner_ids = df_winners['book_id'].tolist()
     df_source_detail['is_winner'] = df_source_detail['book_id'].isin(winner_ids)
-    
     df_source_detail.to_parquet(BOOK_SOURCE_DETAIL_PARQUET, index=False)
 
     
     # b) dim_book.parquet (Canonical Table)
     print("[INFO] Generando dim_book.parquet (Tabla Canónica)...")
     
-    # Final mapping to the canonical columns
-    df_dim_book = df_winners.rename(columns={
+    mapping_dict = {
         'title_raw': 'title',
         'authors_raw': 'authors',
         'idioma_bcp47': 'idioma',
@@ -249,13 +337,23 @@ def deduplicate_and_create_dims(df_unified: pd.DataFrame) -> Dict[str, pd.DataFr
         'publisher': 'editorial', 
         'categories_raw': 'categoria',
         'pageCount': 'paginas',
-    })
+        
+        # Columnas que ya tienen su nombre canónico
+        'book_id': 'book_id', 
+        'title_normalized': 'title_normalized',
+        'fuente_ganadora': 'fuente_ganadora',
+        'ts_ultima_actualizacion': 'ts_ultima_actualizacion',
+        'fecha_publicacion': 'fecha_publicacion',
+        'anio_publicacion': 'anio_publicacion',
+    }
+
+    cols_to_select = [col for col in mapping_dict if col in df_winners.columns]
     
-    # Generate missing or simplified fields
+    df_dim_book = df_winners[cols_to_select].rename(columns=mapping_dict)
+    
     df_dim_book['author_principal'] = df_dim_book['authors'].astype(str).str.split(',').str[0].str.strip()
-    df_dim_book['formato'] = None 
+    df_dim_book['formato'] = pd.NA 
     
-    # Ensure all canonical columns are present
     for col in CANONICAL_COLUMNS:
         if col not in df_dim_book.columns:
             df_dim_book[col] = pd.NA
@@ -279,7 +377,7 @@ def generate_docs(df_dim_book: pd.DataFrame, quality_metrics: Dict[str, Any]):
     # a) quality_metrics.json
     metrics_list = [quality_metrics[k] for k in quality_metrics]
     with open(QUALITY_METRICS_JSON, 'w', encoding='utf-8') as f:
-        json.dump(metrics_list, f, ensure_ascii=False, indent=4)
+        json.dump(metrics_list, f, ensure_ascii=False, indent=4) # Ahora los datos son serializables
     print(f"   -> {QUALITY_METRICS_JSON.name} generado.")
 
     # b) schema.md
@@ -289,7 +387,7 @@ def generate_docs(df_dim_book: pd.DataFrame, quality_metrics: Dict[str, Any]):
     print(f"   -> {SCHEMA_MD.name} generado.")
 
 def generate_schema_markdown(df: pd.DataFrame) -> str:
-    """Generates the documentation for the canonical model dim_book.parquet in Markdown."""
+    # ... (Se mantiene igual)
     markdown = f"""# Esquema del Modelo Canónico: `dim_book.parquet`
 
 **Fecha de Generación:** {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}
@@ -302,7 +400,6 @@ def generate_schema_markdown(df: pd.DataFrame) -> str:
 | :--- | :--- | :--- | :--- | :--- |
 """
     
-    # Generate metadata table
     for col in CANONICAL_COLUMNS:
         col_type = str(df[col].dtype)
         

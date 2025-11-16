@@ -1,0 +1,40 @@
+[
+    {
+        "source": "goodreads",
+        "timestamp": "2025-11-16T18:24:59.839515",
+        "total_rows": 10,
+        "null_counts": {
+            "book_id": 0,
+            "title_normalized": 0,
+            "isbn13_clean": 10,
+            "authors_raw": 0
+        },
+        "completeness_pct": {
+            "book_id": 100.0,
+            "title_normalized": 100.0,
+            "isbn13_clean": 0.0,
+            "authors_raw": 100.0
+        },
+        "pct_valid_languages_bcp47": 0.0,
+        "pct_valid_currencies_iso4217": 0.0
+    },
+    {
+        "source": "googlebooks",
+        "timestamp": "2025-11-16T18:24:59.840277",
+        "total_rows": 8,
+        "null_counts": {
+            "book_id": 0,
+            "title_normalized": 0,
+            "isbn13_clean": 0,
+            "authors_raw": 0
+        },
+        "completeness_pct": {
+            "book_id": 100.0,
+            "title_normalized": 100.0,
+            "isbn13_clean": 100.0,
+            "authors_raw": 100.0
+        },
+        "pct_valid_languages_bcp47": 100.0,
+        "pct_valid_currencies_iso4217": 37.5
+    }
+]

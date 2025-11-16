@@ -3,7 +3,7 @@
     "source_url": "https://www.goodreads.com/search?q=data science&search_type=books",
     "search_query": "data science",
     "user_agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36",
-    "scrape_date": "2025-11-15T21:02:22.379372",
+    "scrape_date": "2025-11-16T18:24:25.066456",
     "num_records_scraped": 10,
     "extraction_strategy": "Search List -> Visit Individual Book Page"
   },
@@ -59,9 +59,9 @@
       "isbn13": null
     },
     {
-      "book_id_source": "26457146",
-      "book_url": "https://www.goodreads.com/book/show/26457146",
-      "title": "Python Data Science Handbook: Essential Tools for Working with Data",
+      "book_id_source": "34213247",
+      "book_url": "https://www.goodreads.com/book/show/34213247",
+      "title": "Numsense! Data Science for the Layman: No Math Added",
       "author": null,
       "rating": null,
       "ratings_count": null,
@@ -69,9 +69,9 @@
       "isbn13": null
     },
     {
-      "book_id_source": "34213247",
-      "book_url": "https://www.goodreads.com/book/show/34213247",
-      "title": "Numsense! Data Science for the Layman: No Math Added",
+      "book_id_source": "26457146",
+      "book_url": "https://www.goodreads.com/book/show/26457146",
+      "title": "Python Data Science Handbook: Essential Tools for Working with Data",
       "author": null,
       "rating": null,
       "ratings_count": null,
