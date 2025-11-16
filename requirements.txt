@@ -1,0 +1,55 @@
+RESUMEN DEL PROYECTO: MINI-PIPELINE DE LIBROS
+
+REQUISITOS TECNICOS
+
+El programa requiere Python y las siguientes librerías, que deben ser instaladas previamente mediante pip:
+
+Web Scraping: requests, beautifulsoup4.
+
+Gestion de Entorno: python-dotenv (opcional para clave API).
+
+Procesamiento de Datos: pandas, pyarrow.
+
+FUNCIONAMIENTO DEL PIPELINE (FLUJO ETL)
+
+El proyecto consta de tres etapas para consolidar y estandarizar datos de libros de Goodreads y Google Books.
+
+ETAPA 1: EXTRACCION (scrape_goodreads.py)
+
+Accede a la página de búsqueda de Goodreads.
+
+Extrae la informacion basica (titulo, autor, rating, URL) de una muestra de 10-15 libros.
+
+Guarda el resultado en un archivo JSON en la carpeta landing/.
+
+ETAPA 2: ENRIQUECIMIENTO (enrich_googlebooks.py)
+
+Lee el archivo JSON de Goodreads.
+
+Consulta la Google Books API usando el titulo y el autor de cada libro.
+
+Captura informacion detallada como editorial, fecha de publicacion, ISBN y precio.
+
+Guarda el resultado en un archivo CSV en la carpeta landing/.
+
+NOTA: Si la clave API no esta configurada, utiliza datos simulados (mocking).
+
+ETAPA 3: INTEGRACION Y ESTANDARIZACION (integrate_pipeline.py)
+
+Lee los archivos JSON y CSV de la carpeta landing/.
+
+Normaliza los datos: estandariza fechas (ISO-8601), idioma (BCP-47) y moneda (ISO-4217).
+
+Deduplica los registros para generar una tabla canonica unica, priorizando la informacion enriquecida de Google Books.
+
+Calcula metricas de calidad y genera documentacion del modelo.
+
+ARTEFACTOS DE SALIDA (Carpeta standard/)
+
+dim_book.parquet: La tabla final de libros estandarizada.
+
+book_source_detail.parquet: Detalle de los registros de origen y ganadores.
+
+docs/quality_metrics.json: Metricas de calidad y completitud de las fuentes.
+
+docs/schema.md: Documentacion del esquema de la tabla dim_book.
