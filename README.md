@@ -20,15 +20,15 @@ Bash
 pip install -r requirements.txt
 Las librerías clave utilizadas son:
 
-requests: Para realizar peticiones HTTP (Web Scraping y API).
+**requests:** Para realizar peticiones HTTP (Web Scraping y API).
 
-beautifulsoup4: Para parsear HTML (Goodreads Scraping).
+**beautifulsoup4:** Para parsear HTML (Goodreads Scraping).
 
-pandas: Para la manipulación, limpieza y estandarización de datos (Núcleo del Ejercicio 3).
+**pandas:** Para la manipulación, limpieza y estandarización de datos (Núcleo del Ejercicio 3).
 
-openpyxl / pyarrow: Necesario para leer/escribir formatos Parquet (para dim_book.parquet).
+**openpyxl / pyarrow:** Necesario para leer/escribir formatos Parquet (para dim_book.parquet).
 
-python-dotenv: Para cargar la clave de API desde el archivo .env.
+**python-dotenv:** Para cargar la clave de API desde el archivo .env.
 
 # 2. Configuración Esencial 
 El proyecto requiere una clave de API para la fase de enriquecimiento de Google Books.
@@ -47,10 +47,10 @@ Ini, TOML
 GOOGLE_BOOKS_API_KEY="TU_CLAVE_DE_API_AQUÍ"
 Advertencia: Si el archivo .env o la clave no están configurados, el Ejercicio 2 utilizará datos simulados (mocking), pero el resto del pipeline se ejecutará con datos de baja calidad.
 
-3. Guía de Uso (Flujo de Trabajo) 
+# 3. Guía de Uso (Flujo de Trabajo) 
 El pipeline está diseñado para ejecutarse en orden: Ejercicio 1 (Extracción), Ejercicio 2 (Enriquecimiento) y Ejercicio 3 (Integración).
 
-Paso 1: Extracción de Goodreads (Ejercicio 1)
+**Paso 1:** Extracción de Goodreads
 Ejecuta el script de web scraping para obtener los IDs y datos básicos de Goodreads:
 
 Bash
@@ -60,7 +60,7 @@ python src/ejercicio_1_goodreads_scraper.py
 # (Asumiendo que el archivo de scraping se llama así, ajusta el nombre si es diferente)
 Resultado Esperado: Archivo landing/goodreads_books.json.
 
-Paso 2: Enriquecimiento con Google Books (Ejercicio 2)
+**Paso 2:** Enriquecimiento con Google Books (Ejercicio 2)
 Ejecuta el script que consulta la API de Google Books para complementar los datos:
 
 Bash
@@ -70,7 +70,7 @@ python src/ejercicio_2_googlebooks_enricher.py
 # (Asumiendo que el archivo de enriquecimiento se llama así, ajusta el nombre si es diferente)
 Resultado Esperado: Archivo landing/googlebooks_books.csv.
 
-Paso 3: Integración y Estandarización (Ejercicio 3)
+**Paso 3:** Integración y Estandarización (Ejercicio 3)
 Ejecuta el script principal del pipeline para unificar, limpiar, deduplicar y generar los artefactos finales:
 
 Bash
@@ -88,7 +88,7 @@ standard/docs/quality_metrics.json (Reporte de calidad).
 
 standard/docs/schema.md (Documentación del esquema).
 
-4. Estructura de Directorios
+# 4. Estructura de Directorios
 El pipeline asumirá la siguiente estructura para entradas y salidas:
 
 project-root/
