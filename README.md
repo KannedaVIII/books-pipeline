@@ -2,17 +2,17 @@ Book Data Integration Pipeline: Requisitos y Guía de Uso
 Este repositorio contiene un pipeline de Ingeniería de Datos en Python diseñado para extraer, enriquecer, estandarizar y deduplicar metadatos de libros procedentes de Goodreads (mediante Web Scraping) y Google Books (mediante su API), generando una fuente de datos canónica y limpia.
 
 
-1. Requisitos de Ejecución 
+# 1. Requisitos de Ejecución 
 Para ejecutar el pipeline completo, se requieren las siguientes dependencias a nivel de sistema y Python:
 
-1.1. Dependencias del Sistema
+# 1.1. Dependencias del Sistema
 Dependencia	Propósito	Requisito
 Python	Entorno de ejecución	Versión 3.8 o superior.
 PIP	Gestor de paquetes	Incluido con Python.
 
 Exportar a Hojas de cálculo
 
-1.2. Dependencias de Python
+# 1.2. Dependencias de Python
 Todas las dependencias de Python deben instalarse desde el archivo requirements.txt (asumiendo que existe):
 
 Bash
@@ -30,15 +30,15 @@ openpyxl / pyarrow: Necesario para leer/escribir formatos Parquet (para dim_book
 
 python-dotenv: Para cargar la clave de API desde el archivo .env.
 
-2. Configuración Esencial 
+# 2. Configuración Esencial 
 El proyecto requiere una clave de API para la fase de enriquecimiento de Google Books.
 
-2.1. Obtener Clave de Google Books API
+#2.1. Obtener Clave de Google Books API
 Obtén una clave de API de la Consola de Desarrolladores de Google.
 
 Asegúrate de que la API de Google Books esté habilitada en tu proyecto.
 
-2.2. Archivo .env
+# 2.2. Archivo .env
 Crea un archivo llamado .env en la raíz del proyecto para almacenar tu clave:
 
 Ini, TOML
