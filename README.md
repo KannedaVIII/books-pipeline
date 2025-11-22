@@ -1,5 +1,7 @@
 Book Data Integration Pipeline: Requisitos y Guía de Uso
 Este repositorio contiene un pipeline de Ingeniería de Datos en Python diseñado para extraer, enriquecer, estandarizar y deduplicar metadatos de libros procedentes de Goodreads (mediante Web Scraping) y Google Books (mediante su API), generando una fuente de datos canónica y limpia.
+
+
 1. Requisitos de Ejecución 
 Para ejecutar el pipeline completo, se requieren las siguientes dependencias a nivel de sistema y Python:
 
