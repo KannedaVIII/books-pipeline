@@ -29,7 +29,7 @@ openpyxl / pyarrow: Necesario para leer/escribir formatos Parquet (para dim_book
 
 python-dotenv: Para cargar la clave de API desde el archivo .env.
 
-2. Configuración Esencial 🔑
+2. Configuración Esencial 
 El proyecto requiere una clave de API para la fase de enriquecimiento de Google Books.
 
 2.1. Obtener Clave de Google Books API
@@ -44,9 +44,9 @@ Ini, TOML
 
 # .env file
 GOOGLE_BOOKS_API_KEY="TU_CLAVE_DE_API_AQUÍ"
-⚠️ Advertencia: Si el archivo .env o la clave no están configurados, el Ejercicio 2 utilizará datos simulados (mocking), pero el resto del pipeline se ejecutará con datos de baja calidad.
+Advertencia: Si el archivo .env o la clave no están configurados, el Ejercicio 2 utilizará datos simulados (mocking), pero el resto del pipeline se ejecutará con datos de baja calidad.
 
-3. Guía de Uso (Flujo de Trabajo) 🚀
+3. Guía de Uso (Flujo de Trabajo) 
 El pipeline está diseñado para ejecutarse en orden: Ejercicio 1 (Extracción), Ejercicio 2 (Enriquecimiento) y Ejercicio 3 (Integración).
 
 Paso 1: Extracción de Goodreads (Ejercicio 1)
